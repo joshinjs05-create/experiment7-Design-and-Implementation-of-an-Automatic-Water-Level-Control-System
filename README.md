@@ -114,6 +114,155 @@ The water-level information is displayed on the **Wokwi Serial Monitor** using U
 
 ## Program
 
+```c
+#include "main.h"
+#include <stdio.h>
+#include <string.h>
+
+ADC_HandleTypeDef hadc;
+UART_HandleTypeDef huart2;
+
+uint32_t adc_value;
+uint32_t water_level;
+char message[100];
+
+void SystemClock_Config(void);
+static void MX_GPIO_Init(void);
+static void MX_ADC_Init(void);
+static void MX_USART2_UART_Init(void);
+
+int main(void)
+{
+    HAL_Init();
+
+    SystemClock_Config();
+
+    MX_GPIO_Init();
+    MX_ADC_Init();
+    MX_USART2_UART_Init();
+
+    while (1)
+    {
+        HAL_ADC_Start(&hadc);
+
+        HAL_ADC_PollForConversion(&hadc, HAL_MAX_DELAY);
+
+        adc_value = HAL_ADC_GetValue(&hadc);
+
+        HAL_ADC_Stop(&hadc);
+
+        water_level = (adc_value * 100) / 4095;
+
+        if (water_level <= 30)
+        {
+            sprintf(message,
+                    "ADC Value: %lu\r\nWater Level: %lu%%\r\nStatus: LOW\r\n\r\n",
+                    adc_value, water_level);
+        }
+        else if (water_level <= 70)
+        {
+            sprintf(message,
+                    "ADC Value: %lu\r\nWater Level: %lu%%\r\nStatus: MEDIUM\r\n\r\n",
+                    adc_value, water_level);
+        }
+        else
+        {
+            sprintf(message,
+                    "ADC Value: %lu\r\nWater Level: %lu%%\r\nStatus: HIGH\r\n\r\n",
+                    adc_value, water_level);
+        }
+
+        HAL_UART_Transmit(&huart2,
+                          (uint8_t *)message,
+                          strlen(message),
+                          HAL_MAX_DELAY);
+
+        HAL_Delay(1000);
+    }
+}
+
+void SystemClock_Config(void)
+{
+    RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+    RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+
+    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_MSI;
+    RCC_OscInitStruct.MSIState = RCC_MSI_ON;
+    RCC_OscInitStruct.MSICalibrationValue = 0;
+    RCC_OscInitStruct.MSIClockRange = RCC_MSIRANGE_5;
+    RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+
+    HAL_RCC_OscConfig(&RCC_OscInitStruct);
+
+    RCC_ClkInitStruct.ClockType =
+        RCC_CLOCKTYPE_HCLK |
+        RCC_CLOCKTYPE_SYSCLK |
+        RCC_CLOCKTYPE_PCLK1;
+
+    RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_MSI;
+    RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+    RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+
+    HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0);
+}
+
+static void MX_ADC_Init(void)
+{
+    ADC_ChannelConfTypeDef sConfig = {0};
+
+    hadc.Instance = ADC1;
+    hadc.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV1;
+    hadc.Init.Resolution = ADC_RESOLUTION_12B;
+    hadc.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+    hadc.Init.ScanConvMode = ADC_SCAN_DIRECTION_FORWARD;
+    hadc.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+    hadc.Init.LowPowerAutoWait = DISABLE;
+    hadc.Init.LowPowerAutoPowerOff = DISABLE;
+    hadc.Init.ContinuousConvMode = DISABLE;
+    hadc.Init.DiscontinuousConvMode = DISABLE;
+    hadc.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+    hadc.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+    hadc.Init.DMAContinuousRequests = DISABLE;
+    hadc.Init.Overrun = ADC_OVR_DATA_OVERWRITTEN;
+
+    HAL_ADC_Init(&hadc);
+
+    sConfig.Channel = ADC_CHANNEL_0;
+    sConfig.Rank = ADC_RANK_CHANNEL_NUMBER;
+    sConfig.SamplingTime = ADC_SAMPLETIME_39CYCLES_5;
+
+    HAL_ADC_ConfigChannel(&hadc, &sConfig);
+}
+
+static void MX_USART2_UART_Init(void)
+{
+    huart2.Instance = USART2;
+    huart2.Init.BaudRate = 115200;
+    huart2.Init.WordLength = UART_WORDLENGTH_8B;
+    huart2.Init.StopBits = UART_STOPBITS_1;
+    huart2.Init.Parity = UART_PARITY_NONE;
+    huart2.Init.Mode = UART_MODE_TX_RX;
+    huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+    huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+
+    HAL_UART_Init(&huart2);
+}
+
+static void MX_GPIO_Init(void)
+{
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+
+    GPIO_InitStruct.Pin = GPIO_PIN_0;
+    GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+}
+```
+
+---
 
 ## Circuit Connections
 
